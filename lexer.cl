@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-02-25 16:47:05>
+;;; Last Modified <michael 2017-09-23 23:37:35>
 
 (in-package "RDPARSE")
 
@@ -249,6 +249,8 @@
 (defliteral :underscore "_")
 
 (defdelimited :string :start-delim #\' :end-delim #\' :escape-char #\\)
+(defdelimited :sq-string :start-delim #\' :end-delim #\' :escape-char #\\)
+(defdelimited :dq-string :start-delim #\" :end-delim #\" :escape-char #\\)
 
 (defcharbag :digit "0123456789")
 (defcharbag* :numeric "0123456789")
