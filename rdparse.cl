@@ -3,7 +3,7 @@
 ;;;                2nd version of rd-parser  
 ;;;                Includes token definition & new tokenizer algorithm
 ;;; Created        2009-04-24 16:21:20 16:21:20
-;;; Last Modified  <michael 2017-02-25 20:14:45>
+;;; Last Modified  <michael 2019-12-17 18:18:41>
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (in-package "RDPARSE")
@@ -20,7 +20,7 @@
                      (argument condition)))))
 
 
-(defmacro defparser (name &key line-comment-start block-comment-start block-comment-end tokens rules)
+(defmacro defparser (name &key line-comment-start block-comment-start block-comment-end tokens rules reserved-keywords)
   ;; Comments
   ;;    :LINE-COMMENT-START   
   ;;    :BLOCK-COMMENT-START  
@@ -28,8 +28,10 @@
   ;;    Within token rules, comments and whitespace are read at the start of each rule.
   ;;    Within syntax rules, comments and whitespace are read at the start of each lexer token. 
   ;; Parsed tokens
-  ;;    Parsed tokens need to be defined in a single rule, otherwise the resulting tokens may inlude whitespace. 
+  ;;    Parsed tokens need to be defined in a single rule, otherwise the resulting tokens may inlude whitespace.
+  (declare (special reserved-keywords))
   (let* ((parsed-tokens ())
+         (grammar-keywords ())
          (token-parsers
           (mapcar (lambda (rule)
                     (push (car rule) parsed-tokens)
@@ -40,7 +42,7 @@
                   rules))
          (start-symbol (caar nonterm-parsers))
          (comments ()))
-    (declare (special parsed-tokens))
+    (declare (special parsed-tokens grammar-keywords))
     (when line-comment-start
       (push (add-token-class (make-line-comment :name :line-comment :start line-comment-start))
             comments))
@@ -54,8 +56,10 @@
        (let ((charseq (make-charseq :chars string))
              (expected-tokens ())
              (error-location 0)
-             (comments ',comments))
-         (declare (special comments expected-tokens error-location))
+             (comments ',comments)
+             (grammar-keywords ',grammar-keywords)
+             (keyword-mode ,(not reserved-keywords)))
+         (declare (special comments expected-tokens error-location grammar-keywords keyword-mode))
          (labels
              (,@token-parsers
               ,@nonterm-parsers)
@@ -102,26 +106,32 @@
 
 (defun translate-token-rule (rule)
   `(,(makesym (car rule)) (level)
-     (declare (special comments))
+     (declare (special comments keyword-mode))
      (trace-print "~a ~a @ ~a" level ',(car rule) (charseq-position charseq))
      (skip-whitespace charseq :comments comments)
-     (let ((parse-tree ,@(translate-ebnf (cadr rule) nil)))
-       (funcall ',(parse-tree-constructor (car rule) 'concatenate-token)
-                ',(car rule)
-                parse-tree
-                level))))
+     (let* ((parse-tree ,@(translate-ebnf (cadr rule) nil))
+            (token (funcall ',(parse-tree-constructor (car rule) 'concatenate-token)
+                            ',(car rule)
+                            parse-tree
+                            level)))
+       (when (and token
+                  (not keyword-mode)
+                  (member (token-value token) grammar-keywords :test #'string=))
+         (error 'syntax-error :argument (format-error charseq)))
+       token)))
 
 (defun translate-ebnf (term &optional (skip-whitespace t))
-  (declare (special parsed-tokens))
+  (declare (special parsed-tokens grammar-keywords reserved-keywords))
   (cond
     ((stringp term)
-     ;; strings denote keywords and other literals in the client grammar
-     `((expect ,term charseq :skip-whitespace ,skip-whitespace)))
+      ;; strings denote keywords and other literals in the client grammar
+      (pushnew term grammar-keywords :test #'string=)
+     `((expect ,term charseq :keyword-mode t :skip-whitespace ,skip-whitespace)))
     ((and
       (keywordp term)
       (not (member term parsed-tokens)))
      ;; keywords denote predefined token types 
-     `((expect ,term charseq :skip-whitespace ,skip-whitespace)))
+     `((expect ,term charseq :keyword-mode ,(not reserved-keywords) :skip-whitespace ,skip-whitespace)))
     ((symbolp term)
      ;; symbols denote nonterminals
      `((,(makesym term) (1+ level))))
@@ -186,19 +196,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Aux functions
 
-(defun expect (expected charseq &key skip-whitespace)
-  (declare (special comments))
+(defun expect (expected charseq &key skip-whitespace keyword-mode)
+  (declare (special comments grammar-keywords))
   (trace-print "Expecting: ~a" expected)
   (let ((token
          (get-token charseq expected :skip-whitespace skip-whitespace :comments comments)))
     (cond
       ((null token)
-       (record-error charseq expected)
-       (trace-print "     Fail: ~a" token)
-       (error 'syntax-error :argument (format-error charseq)))
+        (record-error charseq expected)
+        (trace-print "     Fail: ~a" token)
+        (error 'syntax-error :argument (format-error charseq)))
+      ((and (not keyword-mode)
+            (member (token-value token) grammar-keywords :test #'string=))
+        (record-error charseq expected)
+        (trace-print "     Fail: ~a is reserved" token)
+        (error 'syntax-error :argument (format-error charseq)))        
       (t
-       (trace-print "  Success: ~a" token)
-       token))))
+        (trace-print "  Success: ~a" token)
+        token))))
 
 (defun record-error (charseq expected)
   (declare (special error-location expected-tokens))
