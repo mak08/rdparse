@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-02-25 15:30:22>
+;;; Last Modified <michael 2020-07-12 17:20:31>
 
 (in-package "RDPARSE")
 
@@ -9,6 +9,11 @@
 ;;; Character sequences
 
 (defstruct charseq chars (position 0))
+
+(defmethod print-object ((charseq charseq) (stream t))
+  (format stream "<charseq ~a/~a>"
+          (charseq-position charseq)
+          (length (charseq-chars charseq))))
 
 ;;; Using a vector with fill-pointer seems easier and faster:
 ;;; (defun make-charseq (&key chars)

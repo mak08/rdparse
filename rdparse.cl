@@ -3,7 +3,7 @@
 ;;;                2nd version of rd-parser  
 ;;;                Includes token definition & new tokenizer algorithm
 ;;; Created        2009-04-24 16:21:20 16:21:20
-;;; Last Modified  <michael 2019-12-17 18:18:41>
+;;; Last Modified  <michael 2020-07-12 16:48:49>
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (in-package "RDPARSE")
@@ -14,9 +14,11 @@
 (defvar *trace* nil)
 
 (define-condition syntax-error (error)
-  ((argument :reader argument :initarg :argument))
+  ((argument :reader argument :initarg :argument)
+   (token :reader token :initarg :token :initform :unknown))
   (:report (lambda (condition stream)
-             (format stream "Parse error: ~a"
+             (format stream "Parse error looking at ~a: ~a"
+                     (token condition)
                      (argument condition)))))
 
 
@@ -117,7 +119,7 @@
        (when (and token
                   (not keyword-mode)
                   (member (token-value token) grammar-keywords :test #'string=))
-         (error 'syntax-error :argument (format-error charseq)))
+         (error 'syntax-error :token token :argument (format-error charseq)))
        token)))
 
 (defun translate-ebnf (term &optional (skip-whitespace t))
@@ -205,12 +207,12 @@
       ((null token)
         (record-error charseq expected)
         (trace-print "     Fail: ~a" token)
-        (error 'syntax-error :argument (format-error charseq)))
+        (error 'syntax-error :token expected :argument (format-error charseq)))
       ((and (not keyword-mode)
             (member (token-value token) grammar-keywords :test #'string=))
         (record-error charseq expected)
         (trace-print "     Fail: ~a is reserved" token)
-        (error 'syntax-error :argument (format-error charseq)))        
+        (error 'syntax-error :token expected :argument (format-error charseq)))        
       (t
         (trace-print "  Success: ~a" token)
         token))))
