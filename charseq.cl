@@ -1,14 +1,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2020-07-12 17:20:31>
+;;; Last Modified <michael 2026-03-22 23:26:16>
 
 (in-package "RDPARSE")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Character sequences
 
-(defstruct charseq chars (position 0))
+(defstruct charseq chars (position 0) (column 0))
 
 (defmethod print-object ((charseq charseq) (stream t))
   (format stream "<charseq ~a/~a>"
@@ -48,7 +48,12 @@
         (eql m (length prefix)))))
 
 (defun charseq-advance (charseq &optional (offset 1))
-  (incf (charseq-position charseq) offset))
+  (dotimes (k offset)
+    (let ((current-char (charseq-peek charseq)))
+      (when (member current-char '(#\return #\newline))
+        (setf (charseq-column charseq) -1))
+      (incf (charseq-column charseq))
+      (incf (charseq-position charseq)))))
 
 (defun eof (charseq)
   (= (charseq-position charseq)
