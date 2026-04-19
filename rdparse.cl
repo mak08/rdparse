@@ -3,10 +3,10 @@
 ;;;                2nd version of rd-parser  
 ;;;                Includes token definition & new tokenizer algorithm
 ;;; Created        2009-04-24 16:21:20 16:21:20
-;;; Last Modified  <michael 2020-07-12 16:48:49>
+;;; Last Modified  <michael 2026-04-19 11:12:04>
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package "RDPARSE")
+(in-package :rdparse)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; User interface
@@ -20,7 +20,6 @@
              (format stream "Parse error looking at ~a: ~a"
                      (token condition)
                      (argument condition)))))
-
 
 (defmacro defparser (name &key line-comment-start block-comment-start block-comment-end tokens rules reserved-keywords)
   ;; Comments
@@ -247,6 +246,7 @@
   (list symbol tree))
 
 (defun concatenate-token (type tree &optional level)
+  (declare (ignorable level))
   (etypecase tree
     (token tree)
     (list
