@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Description
 ;;; Author         Michael Kappert 2015
-;;; Last Modified <michael 2017-09-23 23:37:35>
+;;; Last Modified <michael 2026-04-19 11:10:25>
 
 (in-package "RDPARSE")
 
@@ -43,12 +43,13 @@
 (defvar *whitespace*
   #(#\space #\tab #\return #\newline))
 
+
 (defun skip-whitespace (charseq &key
                         (whitespace *whitespace*)
                         (comments ()))
   (loop
      :while (and (not (eof charseq))
-                 (position (charseq-peek charseq) *whitespace*))
+                 (position (charseq-peek charseq) whitespace))
      :do (charseq-advance charseq))
   (loop
      :while (some (lambda (c)
@@ -58,13 +59,13 @@
                   comments)
      :do (loop
             :while (and (not (eof charseq))
-                        (position (charseq-peek charseq) *whitespace*))
+                        (position (charseq-peek charseq) whitespace))
             :do (charseq-advance charseq))))
 
 (defun get-token (charseq spec &key
                   (skip-whitespace t)
                   (whitespace *whitespace*) 
-                  (comments ()))
+                                 (comments ()))
   (when skip-whitespace
     (skip-whitespace charseq :whitespace whitespace :comments comments))
   (when (not (eof charseq))
@@ -218,13 +219,10 @@
   (token-class-name token-class))
 
 (defmacro deflinecomment (name start)
-  `(add-token-class (make-line-comment :name ',name :start ,value)))
+  `(add-token-class (make-line-comment :name ',name :start ,start)))
 
 (defmacro defblockcomment (name start end)
   `(add-token-class (make-block-comment :name ',name :start ,start :end ,end)))
-
-(defmacro defliteral (name value)
-  `(add-token-class (make-literal :name ',name :value ,value)))
 
 (defmacro defliteral (name value)
   `(add-token-class (make-literal :name ',name :value ,value)))
@@ -243,6 +241,7 @@
 
 (defcharbag* :whitespace *whitespace*)
 
+(defliteral :colon ":")
 (defliteral :semicolon ";")
 (defliteral :dot ".")
 (defliteral :comma ",")
